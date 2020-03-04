@@ -1,0 +1,22 @@
+{
+  "name": "twitchbot_obswebsocket",
+  "version": "1.0.0",
+  "description": "Combineing Twitch chat commands with obs websocket server to change scenes and/or sources.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/discharge97/twitchBot_obsWebSocket.git"
+  },
+  "author": "Aleksandar Stojadinovic",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/discharge97/twitchBot_obsWebSocket/issues"
+  },
+  "homepage": "https://github.com/discharge97/twitchBot_obsWebSocket#readme",
+  "dependencies": {
+    "tmi.js": "^1.5.0"
+  }
+}

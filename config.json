@@ -1,0 +1,15 @@
+{
+    "twitch": {
+        "BotUsername": "discharge97",
+        "Oauth": "oauth:xxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "Channel": "discharge97",
+        "JoinMessage": "Hi! How is it going? VoHiYo",
+        "ShowJoinMessage": true,
+        "CommandPrefix": "!"
+    },
+    "obs": {
+        "adress": "localhost",
+        "port": 4444,
+        "password": ""
+    }
+}
