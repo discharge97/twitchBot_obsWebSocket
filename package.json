@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/discharge97/twitchBot_obsWebSocket#readme",
   "dependencies": {
+    "obs-websocket-js": "^4.0.1",
     "tmi.js": "^1.5.0"
   }
 }

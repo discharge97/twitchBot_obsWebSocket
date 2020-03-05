@@ -4,24 +4,14 @@ const fs = require('fs');
 const obs = new OBSWebSocket();
 
 let scenes = [];
-let config;
 let obsMods = [];
 
 //#region  Twitch and OBS Configuration
 
-fs.readFileSync("config.json", (err, data) => {
-    if (data) {
-        cfg = data;
-    }
-});
+let config = JSON.parse(fs.readFileSync("config.json"));
 if (fs.existsSync('obsMods.json')) {
-    fs.readFileSync("obsMods.json", (err, data) => {
-        if (data) {
-            obsMods = data;
-        }
-    });
+    obsMods = JSON.parse(fs.readFileSync("obsMods.json"));
 }
-
 
 const options = {
     options: {
@@ -32,97 +22,124 @@ const options = {
         reconnect: true,
     },
     identity: {
-        username: config.twitch.BotUsername,
-        password: config.twitch.Oauth
+        username: config.twitch.botUsername,
+        password: config.twitch.oAuth
     },
-    channels: [config.twitch.Channel]
+    channels: [config.twitch.channel]
 };
 
 //#endregion Configuration end
 
-const client = new tmi.Client(options);
-try {
-    client.connect();
 
-    client.on('connected', (adress, port) => {
-        if (config.twitch.ShowJoinMessage) {
-            client.action(config.twitch.Channel, config.twitch.JoinMessage);
-        }
-    }).on('message', (channel, tags, message, self) => {
-        try {
-            if (self) return;
-            const TAGS = tags;
+//#region Command functions
 
-            if (message.startsWith(config.twitch.CommandPrefix)) {
-                handleCommand(channel, cmdText.replace(config.twitch.CommandPrefix, ""));
-            }
-        } catch (err) {
-            fs.appendFileSync("errors.log", `${(new Date()).toJSON().slice(0, 19).replace(/[-T]/g, ':')}\n${err.message}\n\n`);
-
-        }
-    });
-} catch (err) {
-    fs.appendFileSync("errors.log", `${(new Date()).toJSON().slice(0, 19).replace(/[-T]/g, ':')}\n${err.message}\n\n`);
-    console.error(err.message);
-}
-
-
-
-// password is optional
-obs.connect({
-    address: `${config.obs.adress}:${config.obs.port}`,
-    password: ''
-}).then(() => {
-    console.log(`Success! We're connected & authenticated.`);
-    getSceneList();
-
-}).catch(err => {
-    console.log(err);
-});
-
-
-// Command functions
-
-function getSceneList() {
+const getSceneList = () => {
     if (obs) {
-        console.log(`Scenes -> \n${data}`);
         obs.send('GetSceneList').then(data => {
-            scenes = data.scenes;
-        })
+            // console.log(data);
+            scenes = data;
+
+        }).catch(err => {
+            console.log(err);
+        });
     }
 }
 
 function setScene(sceneName) {
     obs.send('SetCurrentScene', {
         'scene-name': sceneName
+    }).catch(err => {
+        console.log(err);
     });
 }
 
-function handleCommand(channel, cmdText) {
+function setSourceVisability(scene, source, visable) {
+    obs.send('SetSourceRender', {
+        'scene-name': scene,
+        'source': source,
+        'render': visable
+    }).catch(err => {
+        console.log(err);
+    });
+}
+
+function handleCommand(channel, username, cmdText) {
+
     const cmdParts = cmdText.match(/([^\s]+)/g);
 
     switch (cmdParts[0].toLowerCase()) {
-        case 'scenes':
-            client.action(channel, `Scenes: ${scenes.join(', ')}`);
+        case 'scenes': case 'getscenes':
+
+            //getSceneList();
+            console.log(scenes.scenes);
+
+            let tmp = [];
+
+            for (let i = 0; i < scenes.scenes.length; i++) {
+                tmp.push(i + ". " + scenes.scenes[i].name);
+            }
+            client.action(channel, `Scenes: ${tmp.join(", ")}`);
             break;
 
-        case "scene":
-            // TODO: set scene via index number or name of scene 
+        case "scene": case 'setscene':
+            const num = parseInt(cmdParts[1]);
+
+            if (num >= 0 && num < scenes.scenes.length) {
+                setScene(scenes.scenes[num].name);
+            } else {
+                client.action(channel, `Scene index must be between 0 and ${scenes.scenes.length - 1}!`);
+            }
+
+            break;
+
+        case 'sources': case 'getsources':
+            if (!cmdParts[1] || isNaN(cmdParts[1])) {
+                client.action(channel, cmdParts[1] + ` is not a number! Use index between 0 and ${scenes.scenes.length} for a scene.`);
+                return;
+            } else {
+                const sceneInd = parseInt(cmdParts[1]);
+                if (sceneInd < scenes.scenes.length && sceneInd >= 0) {
+                    let tmp = [];
+                    for (let i = 0; i < scenes.scenes[sceneInd].sources.length; i++) {
+                        tmp.push(i + ". " + scenes.scenes[sceneInd].sources[i].name);
+                    }
+
+                    client.action(channel, `Available sources for '${scenes.scenes[sceneInd].name}': ${tmp.join(", ")}`);
+                    return;
+                } else {
+                    client.action(channel, `Index does not exist. Use index between 0 and ${scenes.scenes.sources.length}`);
+                }
+            }
+            break;
+
+        case 'source': case 'setsource':
+            if (!cmdParts[1] || isNaN(cmdParts[1]) || !cmdParts[2] || isNaN(cmdParts[2])) {
+                client.action(channel, "Invalid command parameters. Use index to set the source visibility!");
+                return;
+            } else {
+                setSourceVisability(scenes.scenes[parseInt(cmdParts[1])].name, scenes.scenes[parseInt(cmdParts[1])].sources[parseInt(cmdParts[2])].name, JSON.parse(cmdParts[3]));
+            }
             break;
 
         case 'obsmod':
-            if (cmdParts[1].toLowerCase() === 'add' && cmdParts[2]) {
-                if (obsMods.indexOf(cmdParts[2].toLowerCase()) < 0) {
-                    obsMods.push(cmdParts[2].toLowerCase());
+            if (username === config.twitch.channel) {
+                if (cmdParts[1].toLowerCase() === 'add' && cmdParts[2]) {
+                    if (obsMods.indexOf(cmdParts[2].toLowerCase()) < 0) {
+                        obsMods.push(cmdParts[2].toLowerCase());
+                    }
+                } else if ((cmdParts[1].toLowerCase() === 'remove' || cmdParts[1].toLowerCase() === 'rm') && cmdParts[2]) {
+                    if (obsMods.indexOf(cmdParts[2].toLowerCase()) < 0) {
+                        obsMods.splice(obsMods.indexOf(cmdParts[2].toLowerCase(), 1));
+                    }
+                } else {
+                    client.action(channel, "Invalid 3rd parameter or add/remove. Note: Don't use '@' before persons username when adding or removing a user from ObsMods!");
+                    return;
                 }
-            } else if (cmdParts[1].toLowerCase() === 'remove' && cmdParts[2]) {
-                if (obsMods.indexOf(cmdParts[2].toLowerCase()) < 0) {
-                    obsMods.splice(obsMods.indexOf(cmdParts[2].toLowerCase(), 1));
-                }
+                fs.writeFileSync("obsMods.json", obsMods);
             } else {
-                client.action(channel, "Invalid 3rd parameter  or add/remove. Note: Don't use '@' before persons username when adding or removing a user from ObsMods!");
+                client.action(channel, `Only ${config.twitch.channel} can add or remove OBS mods.`);
+                return;
             }
-            fs.writeFileSync("obsMods.json", obsMods);
             break;
 
         case "help": case "cmds": case 'commands':
@@ -138,3 +155,44 @@ function handleCommand(channel, cmdText) {
     }
 
 }
+
+//#endregion Command functions
+
+
+
+//#region Twitch & OBS commection
+const client = new tmi.Client(options);
+try {
+    client.connect();
+
+    client.on('connected', (adress, port) => {
+        getSceneList();
+        if (config.twitch.showJoinMessage) {
+            client.action(config.twitch.channel, config.twitch.joinMessage);
+        }
+    }).on('message', (channel, tags, message, self) => {
+        try {
+            if (self) return;
+
+            if (message.startsWith(config.twitch.commandPrefix)) {
+                handleCommand(channel, tags.username, message.replace(config.twitch.commandPrefix, ""));
+            }
+        } catch (err) {
+            fs.appendFileSync("errors.log", `${(new Date()).toJSON().slice(0, 19).replace(/[-T]/g, ':')}\n${err.message}\n\n`);
+
+        }
+    });
+} catch (err) {
+    fs.appendFileSync("errors.log", `${(new Date()).toJSON().slice(0, 19).replace(/[-T]/g, ':')}\n${err.message}\n\n`);
+    console.error(err.message);
+}
+
+obs.connect({
+    address: `${config.obs.adress}:${config.obs.port}`,
+    password: config.obs.password
+}).catch(err => {
+    fs.appendFileSync("errors.log", `${(new Date()).toJSON().slice(0, 19).replace(/[-T]/g, ':')}\n${err.message}\n\n`);
+    console.error(err.message);
+});
+
+//#endregion Twitch & OBS commection

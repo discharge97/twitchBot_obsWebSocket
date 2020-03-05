@@ -1,15 +1,15 @@
 {
     "twitch": {
-        "BotUsername": "discharge97",
-        "Oauth": "oauth:xxxxxxxxxxxxxxxxxxxxxxxxxx",
-        "Channel": "discharge97",
-        "JoinMessage": "Hi! How is it going? VoHiYo",
-        "ShowJoinMessage": true,
-        "CommandPrefix": "!"
+        "botUsername": "discharge97",
+        "oAuth": "oauth:xxxxxxxxxxxxxxxxxxxxxxxx",
+        "channel": "discharge97",
+        "joinMessage": "Hi! How is it going? VoHiYo",
+        "showJoinMessage": true,
+        "commandPrefix": "!"
     },
     "obs": {
         "adress": "localhost",
         "port": 4444,
-        "password": ""
+        "password": "password_is_optional"
     }
 }
