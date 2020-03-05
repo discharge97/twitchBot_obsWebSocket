@@ -63,15 +63,19 @@ function setSourceVisability(scene, source, visable) {
     });
 }
 
+function canUseOBS(username) {
+    return (obsMods.indexOf(username) >= 0 || username === config.twitch.channel);
+}
+
 function handleCommand(channel, username, cmdText) {
 
     const cmdParts = cmdText.match(/([^\s]+)/g);
+    if (!canUseOBS(username)) {
+        return;
+    }
 
     switch (cmdParts[0].toLowerCase()) {
         case 'scenes': case 'getscenes':
-
-            //getSceneList();
-            console.log(scenes.scenes);
 
             let tmp = [];
 
@@ -121,35 +125,63 @@ function handleCommand(channel, username, cmdText) {
             }
             break;
 
-        case 'obsmod':
+        case 'obs': case 'obsmod':
             if (username === config.twitch.channel) {
                 if (cmdParts[1].toLowerCase() === 'add' && cmdParts[2]) {
-                    if (obsMods.indexOf(cmdParts[2].toLowerCase()) < 0) {
-                        obsMods.push(cmdParts[2].toLowerCase());
+                    const modUser = (cmdParts[2].toLowerCase().indexOf("@") == 0) ? cmdParts[2].toLowerCase().replace("@", "") : cmdParts[2].toLowerCase();
+                    if (obsMods.indexOf(modUser) < 0) {
+                        obsMods.push(modUser);
                     }
-                } else if ((cmdParts[1].toLowerCase() === 'remove' || cmdParts[1].toLowerCase() === 'rm') && cmdParts[2]) {
-                    if (obsMods.indexOf(cmdParts[2].toLowerCase()) < 0) {
-                        obsMods.splice(obsMods.indexOf(cmdParts[2].toLowerCase(), 1));
+                } else if ((cmdParts[1].toLowerCase() === 'remove' || cmdParts[1].toLowerCase() === 'rm') && modUser) {
+                    if (obsMods.indexOf(modUser) >= 0) {
+                        obsMods.splice(obsMods.indexOf(modUser), 1);
                     }
                 } else {
-                    client.action(channel, "Invalid 3rd parameter or add/remove. Note: Don't use '@' before persons username when adding or removing a user from ObsMods!");
+                    client.action(channel, "Invalid command parameter/s. Use <help/commands/cmds> command for help!");
                     return;
                 }
-                fs.writeFileSync("obsMods.json", obsMods);
+
+                fs.writeFileSync("obsMods.json", JSON.stringify(obsMods));
             } else {
                 client.action(channel, `Only ${config.twitch.channel} can add or remove OBS mods.`);
                 return;
             }
             break;
 
-        case "help": case "cmds": case 'commands':
-            //TODO: type all of the commands    
-            client.action(channel, "");
+        case "cmds": case 'commands':
+            client.action(channel, `${config.twitch.commandPrefix}scenes/getscenes, ${config.twitch.commandPrefix}scene/setscene <index>, ${config.twitch.commandPrefix}sources/getsources <scene_index>, ${config.twitch.commandPrefix}source/setsource <scene_index> <source_index> <true|false>, ${config.twitch.commandPrefix}obs/obsmod <add|remove/rm> <username>, ${config.twitch.commandPrefix}help <command>, ${config.twitch.commandPrefix}cmds/commands`);
+            break;
 
+        case "help":
+            switch (cmdParts[1].toLowerCase()) {
+                case 'scenes': case 'getscenes':
+                    client.action(channel, username + ", scenes/getscene ~ Lists all of the scenes with indexes.");
+                    break;
+
+                case "scene": case 'setscene':
+                    client.action(channel, username + ", scene/setscene <scene_index> ~ Sets the scene via it's index number. Type scenes command to see scene indexes.");
+                    break;
+
+                case 'sources': case 'getsources':
+                    client.action(channel, username + ", sources/getsource <scene_index> ~ Lists all of the sources with indexes for given scene.");
+                    break;
+
+                case 'source': case 'setsource':
+                    client.action(channel, username + ", source/setsource <scene_index> <source_index> <true|false> ~ Sets the visibility of source (index) on given scene (index)");
+                    break;
+
+                case 'obs': case 'obsmod':
+                    client.action(channel, username + ", obs/obsmods <add|remove/rm> ~ Adds or removes a user that can change the obs settings. Broadcaster is always allowes to edit.");
+                    break;
+
+                default:
+                    client.action(channel, username + "Invlalid commad. After help sould go a command. ex. !help scenes");
+                    break;
+            }
             break;
 
         default:
-            client.action(channel, "Invalid command!");
+            client.action(channel, `Invalid use of command! Type ${config.twitch.commandPrefix}help <command> or ${config.twitch.commandPrefix}cmds/commands to view all the commands to get some details`);
 
             break;
     }
@@ -175,7 +207,9 @@ try {
             if (self) return;
 
             if (message.startsWith(config.twitch.commandPrefix)) {
-                handleCommand(channel, tags.username, message.replace(config.twitch.commandPrefix, ""));
+                if (canUseOBS(tags.username)) {
+                    handleCommand(channel, tags.username, message.replace(config.twitch.commandPrefix, ""));
+                }
             }
         } catch (err) {
             fs.appendFileSync("errors.log", `${(new Date()).toJSON().slice(0, 19).replace(/[-T]/g, ':')}\n${err.message}\n\n`);
