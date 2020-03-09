@@ -1,0 +1,16 @@
+[
+  {
+    "macro": "test1",
+    "cmds": [
+      "scene 0",
+      "source 0 0 false"
+    ]
+  },
+  {
+    "macro": "test2",
+    "cmds": [
+      "scene 0",
+      "source 0 0 true"
+    ]
+  }
+]

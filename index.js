@@ -4,13 +4,17 @@ const fs = require('fs');
 const obs = new OBSWebSocket();
 
 let scenes = [];
-let obsMods = [];
+let macros = [];
+let obsMods;
 
 //#region  Twitch and OBS Configuration
 
 let config = JSON.parse(fs.readFileSync("config.json"));
 if (fs.existsSync('obsMods.json')) {
     obsMods = JSON.parse(fs.readFileSync("obsMods.json"));
+}
+if (fs.existsSync('macros.json')) {
+    macros = JSON.parse(fs.readFileSync("macros.json"));
 }
 
 const options = {
@@ -64,12 +68,13 @@ function setSourceVisability(scene, source, visable) {
 }
 
 function canUseOBS(username) {
-    return (obsMods.indexOf(username) >= 0 || username === config.twitch.channel);
+    return (obsMods && (obsMods.indexOf(username) >= 0)) || (username === config.twitch.channel);
 }
 
 function handleCommand(channel, username, cmdText) {
 
     const cmdParts = cmdText.match(/([^\s]+)/g);
+
     if (!canUseOBS(username)) {
         return;
     }
@@ -150,6 +155,11 @@ function handleCommand(channel, username, cmdText) {
 
         case "cmds": case 'commands':
             client.action(channel, `${config.twitch.commandPrefix}scenes/getscenes, ${config.twitch.commandPrefix}scene/setscene <index>, ${config.twitch.commandPrefix}sources/getsources <scene_index>, ${config.twitch.commandPrefix}source/setsource <scene_index> <source_index> <true|false>, ${config.twitch.commandPrefix}obs/obsmod <add|remove/rm> <username>, ${config.twitch.commandPrefix}help <command>, ${config.twitch.commandPrefix}cmds/commands`);
+            let customCmds = "";
+            macros.forEach(mac => {
+                customCmds += "" + config.twitch.commandPrefix + mac.macro + ", ";
+            });
+            client.action(channel, "Custom commands: " + customCmds);
             break;
 
         case "help":
@@ -181,7 +191,21 @@ function handleCommand(channel, username, cmdText) {
             break;
 
         default:
-            client.action(channel, `Invalid use of command! Type ${config.twitch.commandPrefix}help <command> or ${config.twitch.commandPrefix}cmds/commands to view all the commands to get some details`);
+            let hit = false;
+
+            for (let i = 0; i < macros.length; i++) {
+                if (macros[i].macro === cmdParts[0]) {
+                    macros[i].cmds.forEach(cmd => {
+                        handleCommand(channel, username, cmd);
+                    });
+                    hit = true;
+                    break;
+                }
+            }
+
+            if (!hit) {
+                client.action(channel, `Invalid use of command! Type ${config.twitch.commandPrefix}help <command> or ${config.twitch.commandPrefix}cmds/commands to view all the commands to get some details`);
+            }
 
             break;
     }

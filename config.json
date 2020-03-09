@@ -1,7 +1,7 @@
 {
     "twitch": {
         "botUsername": "BOT_USERNAME",
-        "oAuth": "oauth:xxxxxxxxxxxxxxxxxxxxxxxx",
+        "oAuth": "oauth:xxxxxxxxxxxxxxxxxxxx",
         "channel": "CHANNEL_NAME",
         "joinMessage": "Hi! How is it going? VoHiYo",
         "showJoinMessage": true,
@@ -10,6 +10,6 @@
     "obs": {
         "adress": "localhost",
         "port": 4444,
-        "password": "password_is_optional"
+        "password": "1234"
     }
 }
