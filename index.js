@@ -6,6 +6,7 @@ const obs = new OBSWebSocket();
 let scenes = [];
 let macros = [];
 let obsMods;
+let privileges;
 
 //#region  Twitch and OBS Configuration
 
@@ -15,6 +16,10 @@ if (fs.existsSync('obsMods.json')) {
 }
 if (fs.existsSync('macros.json')) {
     macros = JSON.parse(fs.readFileSync("macros.json"));
+}
+if (fs.existsSync('privileges.json')) {
+    const tmp = JSON.parse(fs.readFileSync("privileges.json"));
+    privileges = new Map(tmp.map(i => [i.user.toLowerCase(), i.cmds]));
 }
 
 const options = {
@@ -68,14 +73,23 @@ function setSourceVisability(scene, source, visable) {
 }
 
 function canUseOBS(username) {
-    return (obsMods && (obsMods.indexOf(username) >= 0)) || (username === config.twitch.channel);
+    return (obsMods && (obsMods.indexOf(username) >= 0)) || (username === config.twitch.channel.toLowerCase());
 }
 
-function handleCommand(channel, username, cmdText) {
+function canUseCommand(username, cmd) {
+    if (username === config.twitch.channel.toLowerCase()) return true;
+
+    if (privileges && privileges.has(username)) {
+        return privileges.get(username).includes(cmd);
+    }
+}
+
+function handleCommand(channel, username, cmdText, pass = false) {
 
     const cmdParts = cmdText.match(/([^\s]+)/g);
 
-    if (!canUseOBS(username)) {
+    if (!pass && canUseCommand(username, cmdParts[0])) {
+        client.action(channel, username + ", you don't have privileges to use that command.");
         return;
     }
 
@@ -196,7 +210,7 @@ function handleCommand(channel, username, cmdText) {
             for (let i = 0; i < macros.length; i++) {
                 if (macros[i].macro === cmdParts[0]) {
                     macros[i].cmds.forEach(cmd => {
-                        handleCommand(channel, username, cmd);
+                        handleCommand(channel, username, cmd, true);
                     });
                     hit = true;
                     break;
@@ -219,6 +233,14 @@ function handleCommand(channel, username, cmdText) {
 //#region Twitch & OBS commection
 const client = new tmi.Client(options);
 try {
+    obs.connect({
+        address: `${config.obs.adress}:${config.obs.port}`,
+        password: config.obs.password
+    }).catch(err => {
+        fs.appendFileSync("errors.log", `${(new Date()).toJSON().slice(0, 19).replace(/[-T]/g, ':')}\n${err.message}\n\n`);
+        console.error(err.message);
+    });
+
     client.connect();
 
     client.on('connected', (adress, port) => {
@@ -245,12 +267,5 @@ try {
     console.error(err.message);
 }
 
-obs.connect({
-    address: `${config.obs.adress}:${config.obs.port}`,
-    password: config.obs.password
-}).catch(err => {
-    fs.appendFileSync("errors.log", `${(new Date()).toJSON().slice(0, 19).replace(/[-T]/g, ':')}\n${err.message}\n\n`);
-    console.error(err.message);
-});
 
 //#endregion Twitch & OBS commection

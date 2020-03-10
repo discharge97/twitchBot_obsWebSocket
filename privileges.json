@@ -1,0 +1,16 @@
+[
+    {
+        "user": "user1",
+        "cmds": [
+            "test1",
+            "test2"
+        ]
+    },
+    {
+        "user": "user2",
+        "cmds": [
+            "test3",
+            "test4"
+        ]
+    }
+]
