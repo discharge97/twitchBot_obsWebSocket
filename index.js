@@ -80,15 +80,16 @@ function canUseCommand(username, cmd) {
     if (username === config.twitch.channel.toLowerCase()) return true;
 
     if (privileges && privileges.has(username)) {
-        return privileges.get(username).includes(cmd);
+        return privileges.get(username).includes(cmd) || privileges.get(username).includes('*');
     }
+    return false;
 }
 
 function handleCommand(channel, username, cmdText, pass = false) {
 
     const cmdParts = cmdText.match(/([^\s]+)/g);
 
-    if (!pass && canUseCommand(username, cmdParts[0])) {
+    if (!pass && !canUseCommand(username, cmdParts[0])) {
         client.action(channel, username + ", you don't have privileges to use that command.");
         return;
     }

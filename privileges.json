@@ -7,10 +7,9 @@
         ]
     },
     {
-        "user": "user2",
+        "user": "discharge97",
         "cmds": [
-            "test3",
-            "test4"
+            "*"
         ]
     }
 ]
